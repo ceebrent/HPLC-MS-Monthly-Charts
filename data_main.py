@@ -125,22 +125,24 @@ def merge_txt_to_csv(path_to_directory):
     # original_filename = headers_in_file[0][headers_in_file[0].index('Original Filename')]
     sample_name = headers_in_file[0][headers_in_file[0].index('Sample Name')]
     component_name = headers_in_file[0][headers_in_file[0].index('Component Name')]
-    concentration = headers_in_file[0][headers_in_file[0].index('Calculated Concentration')]
-    headers = [component_name, sample_name, concentration, 'Date']
+    area = headers_in_file[0][headers_in_file[0].index('Area')]
+    is_area = headers_in_file[0][headers_in_file[0].index('IS Area')]
+    headers = [component_name, sample_name, area, is_area, 'Date']
     out_csv.writerow(headers)
     # out_csv_opened = csv.writer(open(out_csv_file, 'a', newline=''))
     for files in list_of_files:
         in_file = list(csv.reader(open(files, 'rt'), delimiter='\t'))
         for rows in in_file:
-            if rows[in_file[0].index('Sample Name')] in ('Low QC', 'HIgh QC') and \
+            if rows[in_file[0].index('Sample Name')] in 'CAL 2' and \
                     rows[in_file[0].index('Component Name')].endswith('1'):
                 component_name = rows[in_file[0].index('Component Name')]
                 sample_name = rows[in_file[0].index('Sample Name')]
-                concentration = rows[in_file[0].index('Calculated Concentration')]
+                area = rows[in_file[0].index('Area')]
+                is_area = rows[in_file[0].index('IS Area')]
                 date_name = (os.path.basename(rows[in_file[0].index('Original Filename')])[:8])
                 date_formatted = str(pd.to_datetime(date_name, format='%Y%m%d').date())
                 date_final = datetime.datetime.strptime(date_formatted, '%Y-%m-%d').strftime('%m-%d-%y')
-                values = [component_name, sample_name, concentration, date_final]
+                values = [component_name, sample_name, area, is_area, date_final]
                 out_csv.writerow(values)
 
 
