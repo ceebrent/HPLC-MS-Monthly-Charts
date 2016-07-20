@@ -17,7 +17,7 @@ class LeveyJennings(object):
     def __init__(self):
         # replace with get_home() when done
 
-        self.homeDirectory = r'D:\Coding\Python\TestFiles'
+        self.homeDirectory = r'\\192.168.0.242\profiles$\massspec\Desktop\ChartsTest'
 
     # Creates and returns folder to store results into
         def results_folder(self):
@@ -27,7 +27,8 @@ class LeveyJennings(object):
             os.makedirs(result_folder, exist_ok=True)
             
             machine_results = os.path.join(result_folder, 'Machine Results')
-
+            if os.path.exists(machine_results):
+                shutil.rmtree(machine_results)
             os.makedirs(machine_results, exist_ok=True)
             return machine_results
         self.machine_results = results_folder(self)
@@ -37,7 +38,7 @@ class LeveyJennings(object):
             lab_text_files = []
             for dirpath, dirnames, files in os.walk(os.path.join(self.homeDirectory, 'Data')):
                 for filename in files:
-                    if filename.endswith('.txt'):
+                    if filename.endswith('.txt') and 'oral' not in filename.lower():
                         lab_text_files.append(os.path.join(dirpath, filename))
             return lab_text_files
         self.text_files = original_txt(self)
@@ -98,8 +99,11 @@ def get_date_machine(text_file):
 # Gets Unique portion of original file name to append to date file
 def file_name_regex(base_name):
     base_name = base_name.strip()
-    print(base_name)
-    return re.findall('^[A-Z]+\s*\w+-[0-9]+', base_name)[0]
+    try:
+        unique_name = re.findall('^[A-Z]+\s*[A-Z]+-[0-9]+', base_name)[0]
+    except IndexError:
+        pass
+    return unique_name
 
 
 def silent_remove(filename):
