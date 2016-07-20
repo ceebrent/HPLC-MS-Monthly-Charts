@@ -15,7 +15,9 @@ import pandas as pd
 
 class LeveyJennings(object):
     def __init__(self):
-        self.homeDirectory = get_home()
+        # replace with get_home() when done
+
+        self.homeDirectory = r'D:\Coding\Python\TestFiles'
 
     # Creates and returns folder to store results into
         def results_folder(self):
@@ -35,7 +37,7 @@ class LeveyJennings(object):
             lab_text_files = []
             for dirpath, dirnames, files in os.walk(os.path.join(self.homeDirectory, 'Data')):
                 for filename in files:
-                    if filename.endswith('.txt') in filename:
+                    if filename.endswith('.txt'):
                         lab_text_files.append(os.path.join(dirpath, filename))
             return lab_text_files
         self.text_files = original_txt(self)
@@ -54,8 +56,7 @@ class LeveyJennings(object):
             # Create new name in "Date Method Batch Lab format
             date = get_date_machine(self.text_files[x])
             old_file_name = file_name_regex(os.path.basename(self.text_files[x]))
-            unique_file_name = "{date} {old_file} {lab_name}.txt".format(date=date, old_file=old_file_name,
-                                                                         lab_name=self.lab_name)
+            unique_file_name = "{date} {old_file}.txt".format(date=date, old_file=old_file_name)
 
             unique_path = os.path.join(self.machine_results, os.path.basename(unique_file_name))
             silent_remove(unique_path)
@@ -97,7 +98,8 @@ def get_date_machine(text_file):
 # Gets Unique portion of original file name to append to date file
 def file_name_regex(base_name):
     base_name = base_name.strip()
-    return re.findall('^[A-Z]+\s*[A-Z]+-[0-9]+', base_name)[0]
+    print(base_name)
+    return re.findall('^[A-Z]+\s*\w+-[0-9]+', base_name)[0]
 
 
 def silent_remove(filename):
