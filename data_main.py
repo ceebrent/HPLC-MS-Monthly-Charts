@@ -69,7 +69,7 @@ def make_month_folders(result_path):
     list_of_files = glob.glob(result_path+'\\*.txt')
     for file in list_of_files:
         file_name = os.path.basename(file)
-        machine_name = file_name[:6]
+        machine_name = file_name[:7]
 
         machine_folder = os.path.join(result_path, machine_name)
         os.makedirs(machine_folder, exist_ok=True)
@@ -88,7 +88,10 @@ def get_date_machine(text_file):
         orig = original_file.readlines()
         row = orig[1].split('\t')
         row0 = orig[0].split('\t')
-        machine_index = row0.index('Inst.')
+        try:
+            machine_index = row0.index('Inst.')
+        except ValueError:
+            return
         date_text = os.path.basename(row[2])[:8]
         machine_row = row[machine_index]
         if machine_row.startswith('MS'):
