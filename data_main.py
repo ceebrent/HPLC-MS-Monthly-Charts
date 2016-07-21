@@ -38,7 +38,7 @@ class LeveyJennings(object):
             lab_text_files = []
             for dirpath, dirnames, files in os.walk(os.path.join(self.homeDirectory, 'Data')):
                 for filename in files:
-                    if filename.endswith('.txt') and 'oral' not in filename.lower():
+                    if filename.endswith('.txt') and ('oral' not in filename.lower() or 'msh' not in filename.lower()):
                         lab_text_files.append(os.path.join(dirpath, filename))
             return lab_text_files
         self.text_files = original_txt(self)
@@ -57,18 +57,19 @@ class LeveyJennings(object):
             # Create new name in "Date Method Batch Lab format
             date = get_date_machine(self.text_files[x])
             old_file_name = file_name_regex(os.path.basename(self.text_files[x]))
-            unique_file_name = "{date} {old_file}.txt".format(date=date, old_file=old_file_name)
+            if date and old_file_name != None:
+                unique_file_name = "{date} {old_file}.txt".format(date=date, old_file=old_file_name)
 
-            unique_path = os.path.join(self.machine_results, os.path.basename(unique_file_name))
-            silent_remove(unique_path)
-            os.rename(file_name, unique_path)
+                unique_path = os.path.join(self.machine_results, os.path.basename(unique_file_name))
+                silent_remove(unique_path)
+                os.rename(file_name, unique_path)
 
 
 def make_month_folders(result_path):
     list_of_files = glob.glob(result_path+'\\*.txt')
     for file in list_of_files:
         file_name = os.path.basename(file)
-        machine_name = file_name[:4]
+        machine_name = file_name[:6]
 
         machine_folder = os.path.join(result_path, machine_name)
         os.makedirs(machine_folder, exist_ok=True)
@@ -84,26 +85,23 @@ def make_month_folders(result_path):
 # Gets date file was created from cell in original text file
 def get_date_machine(text_file):
     with open(text_file, 'r') as original_file:
-        row = original_file.readlines()[1].split('\t')
+        orig = original_file.readlines()
+        row = orig[1].split('\t')
+        row0 = orig[0].split('\t')
+        machine_index = row0.index('Inst.')
         date_text = os.path.basename(row[2])[:8]
-        machine_row = os.path.normpath(row[2]).split(os.sep)
-        machine_name = ''
-        if 'Projects' in machine_row:
-            project_index = machine_row.index('Projects')
-            machine_path = machine_row[project_index + 1]
-            machine_name = machine_path[:4]
-        name_date = '{machine_name} {date}'.format(machine_name=machine_name, date=date_text)
-        return name_date
+        machine_row = row[machine_index]
+        if machine_row.startswith('MS'):
+            name_date = '{machine_name} {date}'.format(machine_name=machine_row, date=date_text)
+            return name_date
 
 
 # Gets Unique portion of original file name to append to date file
 def file_name_regex(base_name):
     base_name = base_name.strip()
-    try:
-        unique_name = re.findall('^[A-Z]+\s*[A-Z]+-[0-9]+', base_name)[0]
-    except IndexError:
-        pass
-    return unique_name
+    unique_name = re.findall('^[A-Z]+\s*[A-Z]+-[0-9]+', base_name)
+    if unique_name:
+        return unique_name[0]
 
 
 def silent_remove(filename):
