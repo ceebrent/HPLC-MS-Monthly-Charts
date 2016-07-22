@@ -123,12 +123,21 @@ def merge_txt_to_csv(path_to_directory):
     out_csv = csv.writer(open(out_csv_file, 'a', newline=''))
     headers_in_file = list(csv.reader(open(list_of_files[0], 'rt'), delimiter='\t'))
     # print(headers_in_file)
-    # original_filename = headers_in_file[0][headers_in_file[0].index('Original Filename')]
-    sample_name = headers_in_file[0][headers_in_file[0].index('Sample Name')]
-    component_name = headers_in_file[0][headers_in_file[0].index('Component Name')]
-    area = headers_in_file[0][headers_in_file[0].index('Area')]
-    is_area = headers_in_file[0][headers_in_file[0].index('IS Area')]
-    headers = [component_name, sample_name, area, is_area, 'Date']
+    # original_filename = headers_in_file[0][headers_in_file[0].index('OriginalFilename')]
+    sample_name_index = headers_in_file[0].index('Sample Name')
+    component_index = headers_in_file[0].index('Component Name')
+    area_index = headers_in_file[0].index('Area')
+    is_area_index = headers_in_file[0].index('IS Area')
+    area_ratio_index = headers_in_file[0].index('Area Ratio')
+
+    
+    sample_name = headers_in_file[0][sample_name_index]
+    component_name = headers_in_file[0][component_index]
+    area = headers_in_file[0][area_index]
+    is_area = headers_in_file[0][is_area_index]
+    area_ratio = headers_in_file[0][area_ratio_index]
+    
+    headers = [component_name, sample_name, area, is_area, area_ratio, 'Date']
     out_csv.writerow(headers)
     # out_csv_opened = csv.writer(open(out_csv_file, 'a', newline=''))
     for files in list_of_files:
@@ -136,14 +145,15 @@ def merge_txt_to_csv(path_to_directory):
         for rows in in_file:
             if rows[in_file[0].index('Sample Name')] in 'CAL 2' and \
                     rows[in_file[0].index('Component Name')].endswith('1'):
-                component_name = rows[in_file[0].index('Component Name')]
-                sample_name = rows[in_file[0].index('Sample Name')]
-                area = rows[in_file[0].index('Area')]
-                is_area = rows[in_file[0].index('IS Area')]
+                component_name = rows[component_index]
+                sample_name = rows[sample_name_index]
+                area = rows[area_index]
+                is_area = rows[is_area_index]
+                area_ratio = rows[area_ratio_index]
                 date_name = (os.path.basename(rows[in_file[0].index('Original Filename')])[:8])
                 date_formatted = str(pd.to_datetime(date_name, format='%Y%m%d').date())
                 date_final = datetime.datetime.strptime(date_formatted, '%Y-%m-%d').strftime('%m-%d-%y')
-                values = [component_name, sample_name, area, is_area, date_final]
+                values = [component_name, sample_name, area, is_area, area_ratio, date_final]
                 out_csv.writerow(values)
 
 
