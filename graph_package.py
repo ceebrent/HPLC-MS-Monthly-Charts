@@ -43,11 +43,12 @@ def make_chart(data_csv):
         drug_group = grouped.get_group(drug)
         number_of_days = list(set(drug_group['Day']))
         drug_name = drug[:-2]
-        drug_group['Calculated Concentration'] = drug_group['Calculated Concentration'].convert_objects(convert_numeric=True).round(2)
+##        drug_group['Calculated Concentration'] = drug_group['Calculated Concentration'].convert_objects(convert_numeric=True).round(2)
+        drug_group['Calculated Concentration']= pd.to_numeric(drug_group['Calculated Concentration'], errors='coerce').round(2)
         if(drug_name == 'Modafinil'):
             break
         day_dfs = []
-        print(drug_group[drug_group['Sample Name'] == 'HIgh QC']['Calculated Concentration'].mean())
+        high_qc_mean = drug_group[drug_group['Sample Name'] == 'HIgh QC']['Calculated Concentration'].mean()
         for days in number_of_days:
             out_dict = {}
             day = drug_group[drug_group['Day'] == days]
@@ -72,6 +73,7 @@ def make_chart(data_csv):
         writer.book = book
         writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
         result.to_excel(writer, startrow=counter, startcol=0)
+        book.active['G1'] = 'Test'
         writer.save()
         counter = counter + 16
 
