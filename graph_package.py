@@ -10,6 +10,9 @@ from matplotlib.backends.backend_pdf import PdfPages
 from openpyxl import load_workbook
 import errno
 import xlsxwriter
+from openpyxl.styles.borders import Border, Side
+from openpyxl.styles import Style, Font
+
 
 plt.style.use('ggplot')
 
@@ -36,19 +39,31 @@ def make_chart(data_csv):
     xlsxwriter.Workbook(out_csv_file)
     list_of_df = []
     grouped = df.groupby(['Component Name'])
-    counter = 0
+    df_counter = 0
+    high_counter = 5
+    low_counter = 0
+
+    thin_border = Border(left=Side(style='thin'), 
+                     right=Side(style='thin'), 
+                     top=Side(style='thin'), 
+                     bottom=Side(style='thin'))
+    medium_border = Border(left=Side(style='medium'), 
+                     right=Side(style='medium'), 
+                     top=Side(style='medium'), 
+                     bottom=Side(style='medium'))
     
     for drug in grouped.size().index:
+        pd.options.mode.chained_assignment = None
+        drug_name = drug[:-2]
+        if(drug_name == 'Modafinil'):
+            break
         dict_to_excel = {}
         drug_group = grouped.get_group(drug)
         number_of_days = list(set(drug_group['Day']))
-        drug_name = drug[:-2]
 ##        drug_group['Calculated Concentration'] = drug_group['Calculated Concentration'].convert_objects(convert_numeric=True).round(2)
-        drug_group['Calculated Concentration']= pd.to_numeric(drug_group['Calculated Concentration'], errors='coerce').round(2)
-        if(drug_name == 'Modafinil'):
-            break
+        drug_group['Calculated Concentration'] = pd.to_numeric(drug_group['Calculated Concentration'], errors='coerce').round(2)
         day_dfs = []
-        high_qc_mean = drug_group[drug_group['Sample Name'] == 'HIgh QC']['Calculated Concentration'].mean()
+        
         for days in number_of_days:
             out_dict = {}
             day = drug_group[drug_group['Day'] == days]
@@ -67,15 +82,79 @@ def make_chart(data_csv):
         for x in range(1, len(day_dfs)):
             result = pd.concat([result, day_dfs[x]], axis=1, join_axes=[result.index])
 
+        """Being mean and std calculations"""
+        high_qc_mean = drug_group[drug_group['Sample Name'] == 'HIgh QC']['Calculated Concentration'].mean().round(2)
+        low_qc_mean = drug_group[drug_group['Sample Name'] == 'Low QC']['Calculated Concentration'].mean().round(2)
+        high_qc_std = drug_group[drug_group['Sample Name'] == 'HIgh QC']['Calculated Concentration'].std().round(2)
+        low_qc_std = drug_group[drug_group['Sample Name'] == 'Low QC']['Calculated Concentration'].std().round(2)
+        high_qc_rsd = (high_qc_std / high_qc_mean * 100).round(2)
+        low_qc_rsd = (low_qc_std / low_qc_mean * 100).round(2)
+        if(low_counter == 0):
+            low_counter = int(5 + len(result)/2)
+        
+        mean_column = 'G'
+        std_column = 'H'
+        rsd_column = 'I'
 
+        high_qc_mean_header_loc = "{column}{row}".format(column=mean_column, row=high_counter)
+        high_qc_std_header_loc = "{column}{row}".format(column=std_column, row=high_counter)
+        high_qc_rsd_header_loc = "{column}{row}".format(column=rsd_column, row=high_counter)
+
+        low_qc_mean_header_loc = "{column}{row}".format(column=mean_column, row=low_counter)
+        low_qc_std_header_loc = "{column}{row}".format(column=std_column, row=low_counter)
+        low_qc_rsd_header_loc = "{column}{row}".format(column=rsd_column, row=low_counter)
+
+        high_qc_mean_data_loc = "{column}{row}".format(column=mean_column, row=high_counter+1)
+        high_qc_std_data_loc = "{column}{row}".format(column=std_column, row=high_counter+1)
+        high_qc_rsd_data_loc = "{column}{row}".format(column=rsd_column, row=high_counter+1)
+
+        low_qc_mean_data_loc = "{column}{row}".format(column=mean_column, row=low_counter+1)
+        low_qc_std_data_loc = "{column}{row}".format(column=std_column, row=low_counter+1)
+        low_qc_rsd_data_loc = "{column}{row}".format(column=rsd_column, row=low_counter+1)
+
+        
+        
         book = load_workbook(out_csv_file)
         writer = pd.ExcelWriter(out_csv_file, engine='openpyxl')
         writer.book = book
         writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
-        result.to_excel(writer, startrow=counter, startcol=0)
-        book.active['G1'] = 'Test'
+        result.to_excel(writer, startrow=df_counter, startcol=0)
+        """Begin to write means and stds into workbook"""
+    
+        book.active[high_qc_mean_header_loc] = "High QC Mean"
+        book.active[high_qc_std_header_loc] = "High QC Std."
+        book.active[high_qc_rsd_header_loc] = "High QC %RSD"
+
+        book.active[high_qc_mean_data_loc] = high_qc_mean
+        book.active[high_qc_std_data_loc] = high_qc_std
+        book.active[high_qc_rsd_data_loc] = high_qc_rsd
+
+        book.active[low_qc_mean_header_loc] = "Low QC Mean"
+        book.active[low_qc_std_header_loc] = "Low QC Std."
+        book.active[low_qc_rsd_header_loc] = "Low QC %RSD"
+
+        book.active[low_qc_mean_data_loc] = low_qc_mean
+        book.active[low_qc_std_data_loc] = low_qc_std
+        book.active[low_qc_rsd_data_loc] = low_qc_rsd
+
+        for columns in range(1,7):
+            for rows in range(10):
+                book.active.cell(row=high_counter + rows, column=columns).border = thin_border
+
+        for columns in range(7,10):
+            book.active.cell(row=high_counter, column=columns).font = Font(bold=True)
+            book.active.cell(row=low_counter, column=columns).font = Font(bold=True)
+            
+            for rows in range(2):
+                book.active.cell(row=high_counter + rows, column=columns).border = thin_border
+                book.active.cell(row=low_counter + rows, column=columns).border = thin_border
+        
+        
         writer.save()
-        counter = counter + 16
+        df_counter = df_counter + 16
+        high_counter = len(result) + 6 + high_counter
+        low_counter = len(result)+ 6 + low_counter
+        
 
 ##    for x in list_of_df:
 ##        book = load_workbook(out_csv_file)
