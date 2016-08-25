@@ -56,7 +56,7 @@ def make_chart(data_csv):
         pd.options.mode.chained_assignment = None
         drug_name = drug[:-2]
         if(drug_name == 'Modafinil'):
-            break
+            pass
         dict_to_excel = {}
         drug_group = grouped.get_group(drug)
         number_of_days = list(set(drug_group['Day']))
