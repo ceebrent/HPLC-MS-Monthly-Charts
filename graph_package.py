@@ -156,14 +156,7 @@ def make_chart(data_csv):
         low_counter = len(result)+ 6 + low_counter
         
 
-##    for x in list_of_df:
-##        book = load_workbook(out_csv_file)
-##        writer = pd.ExcelWriter(out_csv_file, engine='openpyxl')
-##        writer.book = book
-##        writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
-##        x.to_excel(writer, startrow=counter, startcol=0)
-##        writer.save()
-##        counter = counter + 16
+
 
 
 make_chart(r'\\192.168.0.242\profiles$\massspec\Desktop\MPX2 NEW PP VALIDATION\Data\Precision\data.csv')
