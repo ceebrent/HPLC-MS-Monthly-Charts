@@ -12,7 +12,7 @@ import errno
 import xlsxwriter
 import openpyxl
 from openpyxl.styles.borders import Border, Side
-from openpyxl.styles import Style, Font
+from openpyxl.styles import Style, Font, PatternFill
 from tkinter import *
 from tkinter import filedialog
 import glob
@@ -50,6 +50,7 @@ def group_sort(df, path_to_folder):
     df.reset_index(inplace=True, drop=True)
     length = df.shape[0]
     df_name_modify = df
+    df['Calculated Concentration'].fillna(0,inplace=True)
 ##    print(length)
 ##    rows = df.iterrows()
 ##    for x in range(length):
@@ -65,7 +66,7 @@ def group_sort(df, path_to_folder):
     silent_remove(new_csv_file)
     silent_remove(csv_file)
     df.to_csv(csv_file)
-
+    num_patients = []
     with open(csv_file, 'r') as infile, open(new_csv_file, 'a', newline='') as outfile:
         reader = csv.reader(infile)
         writer = csv.writer(outfile)
@@ -75,13 +76,39 @@ def group_sort(df, path_to_folder):
         writer.writerow(header)
         for row in reader:
             if row[sample_type] == 'Unknown':
-                row[sample_name] = int(row[sample_name][-2:].strip(' '))
-                writer.writerow(row)
+                try:
+                    row[sample_name] = int(row[sample_name][-2:].strip(' '))
+                    writer.writerow(row)
+                    num_patients.append(row[sample_name])
+                except ValueError:
+                    writer.writerow(row)
             else:
                 writer.writerow(row)
-    return df['Component Name'].unique(), df['Inst.'].unique(), new_csv_file
+    unique_num_patients = set(num_patients)
+    unique_inst = [str(x) for x in df['Inst.'].unique()]
+    return df['Component Name'].unique(), unique_inst, new_csv_file, unique_num_patients
+def get_cutoffs(csv_file):
 
-def write_styles(csv_file, path_to_folder, drug_names, instruments):
+    lower_cutoff = {}
+    upper_cutoff = {}
+    drug_dict = {'lower':lower_cutoff,
+                 'upper':upper_cutoff}
+    with open(csv_file, 'r') as infile:
+        reader = csv.reader(infile)
+        header = next(reader)
+        sample_name = header.index('Sample Name')
+        component_name = header.index('Component Name')
+        actual_conc = header.index('Actual Concentration')
+        for row in reader:
+            if row[sample_name].lower() == 'cal 2' and row[component_name] not in lower_cutoff:
+                lower_cutoff[row[component_name]] = float(row[actual_conc])
+            if row[sample_name].lower() == 'cal 5' and row[component_name] not in upper_cutoff:
+                upper_cutoff[row[component_name]] = float(row[actual_conc])
+
+    return drug_dict
+            
+def write_styles(csv_file, path_to_folder, drug_names,
+                 instruments, num_of_patients):
     out_xlsx = os.path.join(path_to_folder, 'output.xlsx')
     silent_remove(out_xlsx)
     wb = openpyxl.Workbook()
@@ -89,8 +116,8 @@ def write_styles(csv_file, path_to_folder, drug_names, instruments):
         wb.create_sheet(index=drugs, title=drug_names[drugs])
 
     drug_sheets = wb.get_sheet_names()
-    num_of_patients = 25
-
+    drug_sheets.remove('Sheet')
+    drug_cutoffs = get_cutoffs(csv_file)
 
     """Borders formatting"""
     thin_border = Border(left=Side(style='thin'), 
@@ -101,12 +128,20 @@ def write_styles(csv_file, path_to_folder, drug_names, instruments):
                      right=Side(style='medium'), 
                      top=Side(style='medium'), 
                      bottom=Side(style='medium'))
+
+    """Fill Color Formatting"""
+    redFill = PatternFill(start_color='FF0000', end_color='FF0000', fill_type='solid')
+    yellowFill = PatternFill(start_color='F3FF00', end_color='F3FF00', fill_type='solid')
+    greenFill = PatternFill(start_color='78FF00', end_color='78FF00', fill_type='solid')
+    whiteFill = PatternFill(start_color='FFFFFF', end_color='FFFFFF', fill_type='solid')
     
     with open(csv_file, 'r') as infile:
         reader = csv.reader(infile)
         reader_header = next(reader)
-        header = ['Sample Name', instruments[0], instruments[1], '% Diff.']
+        header = ['Sample Name', instruments[0], instruments[1], '% Diff.']        
         for sheet in drug_sheets:
+            if sheet == 'Sheet':
+                pass
             ws = wb.get_sheet_by_name(sheet)
 ##          Write and style title name cell 
             wb[sheet].append([sheet])
@@ -122,7 +157,7 @@ def write_styles(csv_file, path_to_folder, drug_names, instruments):
 ##           Begin to write Sample names and machine calc concs.
 
         
-            for sample in range(1, num_of_patients+1):
+            for sample in range(1, len(num_of_patients)+1):
                 ws.cell(row=sample+2, column=1).value = sample
                 sample_name = reader_header.index('Sample Name')
                 inst_data = reader_header.index('Inst.')
@@ -130,16 +165,25 @@ def write_styles(csv_file, path_to_folder, drug_names, instruments):
                 comp_name = reader_header.index('Component Name')
                 inst1_value = 0
                 inst2_value = 0
-                
+                diff_cell = ws.cell(row = sample + 2, column=4)
                 for row in reader:
                     try:
                         if (int(row[sample_name]) == sample and row[comp_name] == sheet):
                             if row[inst_data] == instruments[0]:
+                                
                                 inst1_value = float(row[calc_conc])
+
+                                if inst1_value < drug_cutoffs['lower'][sheet]:
+                                    inst1_value = 0
+  
                                 ws.cell(row = sample+2, column=2).value = inst1_value
                                 
                             elif row[inst_data] == instruments[1]:
                                 inst2_value = float(row[calc_conc])
+
+                                if inst2_value < drug_cutoffs['lower'][sheet]:
+                                    inst2_value = 0
+
                                 ws.cell(row = sample+2, column=3).value = inst2_value
                                 
                             else:
@@ -147,9 +191,29 @@ def write_styles(csv_file, path_to_folder, drug_names, instruments):
                     except ValueError:
                         pass
                 try:
-                    ws.cell(row = sample + 2, column=4).value = round((100 * abs(inst1_value - inst2_value)/inst2_value), 2)
+                    diff = round((100 * abs(inst1_value - inst2_value)/inst2_value), 2)
+                    diff_cell.value = diff
+                    if diff > 25:
+                        diff_cell.fill = redFill
                 except ZeroDivisionError:
-                    ws.cell(row = sample + 2, column=4).value = 0
+                    pass
+
+                ##Begin Styling
+                for col in range(1,len(header)+1):
+                    for row in range(1, len(num_of_patients) + 3):
+                        ws.cell(row=row, column=col).border = thin_border
+
+                ##Begin Logic + Styling
+                if (inst1_value == 0 and inst2_value == 0):
+                    diff_cell.value = 'Match'
+                        
+                elif (inst1_value > drug_cutoffs['upper'][sheet]) and (inst2_value > drug_cutoffs['upper'][sheet]):
+                    diff_cell.value = 'Match: > High Cutoff'
+                    diff_cell.fill = whiteFill
+                elif (inst1_value == 0 and inst2_value > 0) or (inst2_value == 0 and inst1_value > 0):
+                    diff_cell.value = 'Mismatch'
+                    diff_cell.fill = yellowFill
+                    
                 infile.seek(1)
     wb.save(out_xlsx)
 
@@ -162,11 +226,15 @@ def make_file_dialog():
 
     if not root.file_name:
         sys.exit(0)
-    print(text_to_df(root.file_name).head())
+    df = text_to_df(root.file_name)
+    drug_names, instruments, csv_file,num_patients = group_sort(df, root.file_name)
+    write_styles(csv_file, root.file_name, drug_names, instruments,num_patients)
 
-##if __name__ == "__main__":
-##    make_file_dialog()
-df = text_to_df(r'\\192.168.0.242\profiles$\massspec\Desktop\MPX2 NEW PP VALIDATION\Data\COMPARISON')
-drug_names, instruments, csv_file = group_sort(df, r'\\192.168.0.242\profiles$\massspec\Desktop\MPX2 NEW PP VALIDATION\Data\COMPARISON')
-write_styles(csv_file, r'\\192.168.0.242\profiles$\massspec\Desktop\MPX2 NEW PP VALIDATION\Data\COMPARISON',
-            drug_names, instruments)
+if __name__ == "__main__":
+    make_file_dialog()
+
+    
+##df = text_to_df(r'\\192.168.0.242\profiles$\massspec\Desktop\MPX2 NEW PP VALIDATION\Data\COMPARISON')
+##drug_names, instruments, csv_file = group_sort(df, r'\\192.168.0.242\profiles$\massspec\Desktop\MPX2 NEW PP VALIDATION\Data\COMPARISON')
+##write_styles(csv_file, r'\\192.168.0.242\profiles$\massspec\Desktop\MPX2 NEW PP VALIDATION\Data\COMPARISON',
+##            drug_names, instruments)
