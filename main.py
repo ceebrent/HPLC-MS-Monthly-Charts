@@ -1,12 +1,9 @@
-import calendar
 import itertools
 import os
 import shutil
 import sys
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.backends.backend_pdf import PdfPages
 from openpyxl import load_workbook
 import errno
 import xlsxwriter
@@ -18,8 +15,6 @@ from tkinter import filedialog
 import glob
 import csv
 
-
-plt.style.use('ggplot')
 
 def silent_remove(filename):
     try:
@@ -51,15 +46,6 @@ def group_sort(df, path_to_folder):
     length = df.shape[0]
     df_name_modify = df
     df['Calculated Concentration'].fillna(0,inplace=True)
-##    print(length)
-##    rows = df.iterrows()
-##    for x in range(length):
-##        row = next(rows)
-##        print(row)
-##        sample_type = row[1]['Sample Type']
-##        sample_name = row[1]['Sample Name']
-##        if sample_type == 'Unknown':
-##            df_name_modify.loc[x, 'Sample Name'] = sample_name[-2:]
             
     csv_file = os.path.join(path_to_folder, 'data.csv')
     new_csv_file = os.path.join(path_to_folder, 'data_m.csv')
