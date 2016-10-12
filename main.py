@@ -86,6 +86,7 @@ def group_sort(df, path_to_folder):
                 writer.writerow(row)
     unique_num_patients = set(num_patients)
     unique_inst = [str(x) for x in df['Inst.'].unique()]
+    silent_remove(csv_file)
     return df['Component Name'].unique(), unique_inst, new_csv_file, unique_num_patients
 def get_cutoffs(csv_file):
 
@@ -109,8 +110,16 @@ def get_cutoffs(csv_file):
             
 def write_styles(csv_file, path_to_folder, drug_names,
                  instruments, num_of_patients):
-    out_xlsx = os.path.join(path_to_folder, 'output.xlsx')
+    out_xlsx = os.path.join(path_to_folder, 'Comparison_{inst1}_to_{inst2}.xlsx'.format(inst1=instruments[0],
+                                                                                        inst2=instruments[1]))
     silent_remove(out_xlsx)
+    summary_csv = os.path.join(path_to_folder, 'Summary.csv')
+    silent_remove(summary_csv)
+
+    with open(summary_csv, 'w', newline='') as outfile:
+        writer = csv.writer(outfile)
+        writer.writerow(['Analyte', 'Sample', 'Reason'])
+    
     wb = openpyxl.Workbook()
     for drugs in range(len(drug_names)):
         wb.create_sheet(index=drugs, title=drug_names[drugs])
@@ -195,6 +204,9 @@ def write_styles(csv_file, path_to_folder, drug_names,
                     diff_cell.value = diff
                     if diff > 25:
                         diff_cell.fill = redFill
+                        with open(summary_csv, 'a', newline='') as summary:
+                            writer = csv.writer(summary)
+                            writer.writerow([sheet, sample, diff])
                 except ZeroDivisionError:
                     pass
 
@@ -202,7 +214,7 @@ def write_styles(csv_file, path_to_folder, drug_names,
                 for col in range(1,len(header)+1):
                     for row in range(1, len(num_of_patients) + 3):
                         ws.cell(row=row, column=col).border = thin_border
-
+                        
                 ##Begin Logic + Styling
                 if (inst1_value == 0 and inst2_value == 0):
                     diff_cell.value = 'Match'
@@ -210,9 +222,13 @@ def write_styles(csv_file, path_to_folder, drug_names,
                 elif (inst1_value > drug_cutoffs['upper'][sheet]) and (inst2_value > drug_cutoffs['upper'][sheet]):
                     diff_cell.value = 'Match: > High Cutoff'
                     diff_cell.fill = whiteFill
+                        
                 elif (inst1_value == 0 and inst2_value > 0) or (inst2_value == 0 and inst1_value > 0):
                     diff_cell.value = 'Mismatch'
                     diff_cell.fill = yellowFill
+                    with open(summary_csv, 'a', newline='') as summary:
+                        writer = csv.writer(summary)
+                        writer.writerow([sheet, sample, 'Mismatch'])
                     
                 infile.seek(1)
     wb.save(out_xlsx)
@@ -228,13 +244,9 @@ def make_file_dialog():
         sys.exit(0)
     df = text_to_df(root.file_name)
     drug_names, instruments, csv_file,num_patients = group_sort(df, root.file_name)
-    write_styles(csv_file, root.file_name, drug_names, instruments,num_patients)
+    write_styles(csv_file, root.file_name, drug_names, instruments, num_patients)
+    silent_remove(csv_file)
 
 if __name__ == "__main__":
     make_file_dialog()
 
-    
-##df = text_to_df(r'\\192.168.0.242\profiles$\massspec\Desktop\MPX2 NEW PP VALIDATION\Data\COMPARISON')
-##drug_names, instruments, csv_file = group_sort(df, r'\\192.168.0.242\profiles$\massspec\Desktop\MPX2 NEW PP VALIDATION\Data\COMPARISON')
-##write_styles(csv_file, r'\\192.168.0.242\profiles$\massspec\Desktop\MPX2 NEW PP VALIDATION\Data\COMPARISON',
-##            drug_names, instruments)
