@@ -192,7 +192,11 @@ def write_styles(csv_file, path_to_folder, drug_names,
                         diff_cell.fill = redFill
                         with open(summary_csv, 'a', newline='') as summary:
                             writer = csv.writer(summary)
-                            writer.writerow([sheet, sample, diff])
+
+                            if diff >= 100:
+                                writer.writerow([sheet, sample, 'Mismatch'])
+                            else:
+                                writer.writerow([sheet, sample, diff])
                 except ZeroDivisionError:
                     pass
 
@@ -212,9 +216,6 @@ def write_styles(csv_file, path_to_folder, drug_names,
                 elif (inst1_value == 0 and inst2_value > 0) or (inst2_value == 0 and inst1_value > 0):
                     diff_cell.value = 'Mismatch'
                     diff_cell.fill = yellowFill
-                    with open(summary_csv, 'a', newline='') as summary:
-                        writer = csv.writer(summary)
-                        writer.writerow([sheet, sample, 'Mismatch'])
                     
                 infile.seek(1)
     wb.save(out_xlsx)
