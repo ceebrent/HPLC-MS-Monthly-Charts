@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
+import openpyxl
 from openpyxl import load_workbook
 import errno
 import xlsxwriter
